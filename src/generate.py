@@ -9,6 +9,7 @@ import html
 import json
 from pathlib import Path
 import random
+import shutil
 from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
@@ -317,12 +318,20 @@ def render_wallpaper(
     return canvas
 
 
-def build_index_html(today_payload: dict) -> str:
+def build_index_html(today_payload: dict, has_shortcut: bool = False) -> str:
     """Build a minimalist dark static preview page for today's wallpapers."""
     safe_lesson = html.escape(today_payload["lesson"])
     safe_date = html.escape(today_payload["date"])
     day_num = int(today_payload["day_index"]) + 1
     total = int(today_payload["total_lessons"])
+
+    shortcut_block = ""
+    if has_shortcut:
+        shortcut_block = """
+      <div class="cta-wrap">
+        <a class="cta" href="DailyGitaWallpaper.shortcut">Install iPhone Shortcut</a>
+        <p class="cta-sub">Downloads today&rsquo;s wallpaper to Photos &amp; sets your Lock Screen automatically</p>
+      </div>"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -382,6 +391,33 @@ def build_index_html(today_payload: dict) -> str:
       line-height: 1.5;
       font-weight: 400;
     }}
+    .cta-wrap {{
+      margin-top: 2rem;
+    }}
+    .cta {{
+      display: inline-block;
+      padding: 0.78rem 1.5rem;
+      border-radius: 999px;
+      border: 1px solid rgba(200, 169, 110, 0.55);
+      background: rgba(200, 169, 110, 0.14);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.94rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }}
+    .cta:hover {{
+      background: rgba(200, 169, 110, 0.24);
+      border-color: var(--accent);
+    }}
+    .cta-sub {{
+      margin: 0.65rem auto 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -430,15 +466,15 @@ def build_index_html(today_payload: dict) -> str:
     <header>
       <div class="meta">{safe_date} &middot; Day {day_num} of {total}</div>
       <div class="rule"></div>
-      <blockquote>{safe_lesson}</blockquote>
+      <blockquote>{safe_lesson}</blockquote>{shortcut_block}
     </header>
     <section class="grid">
       <div class="card">
         <div class="card-header">
           <span>iPhone &middot; 1290&times;2796</span>
-          <a href="iphone.png">iphone.png</a>
+          <span class="links"><a href="iphone.jpg">iphone.jpg</a> &middot; <a href="iphone.png">iphone.png</a></span>
         </div>
-        <a href="iphone.png"><img class="preview" src="iphone.png" alt="iPhone daily wallpaper preview" /></a>
+        <a href="iphone.jpg"><img class="preview" src="iphone.png" alt="iPhone daily wallpaper preview" /></a>
       </div>
       <div class="card">
         <div class="card-header">
@@ -491,6 +527,19 @@ def generate_site(
             citation=citation,
         )
         img.save(out_dir / filename, format="PNG", optimize=True)
+        if device_name == "iphone":
+            img.save(
+                out_dir / "iphone.jpg",
+                format="JPEG",
+                quality=95,
+                subsampling=0,
+                optimize=True,
+            )
+
+    shortcut_src = PROJECT_ROOT / "assets" / "DailyGitaWallpaper.shortcut"
+    has_shortcut = shortcut_src.is_file()
+    if has_shortcut:
+        shutil.copy2(shortcut_src, out_dir / "DailyGitaWallpaper.shortcut")
 
     today_payload = {
         "date": target_date.isoformat(),
@@ -498,13 +547,17 @@ def generate_site(
         "total_lessons": len(lessons),
         "lesson": entry["lesson"],
         "iphone_image": "iphone.png",
+        "iphone_jpg": "iphone.jpg",
         "mac_image": "mac.png",
     }
     (out_dir / "today.json").write_text(
         json.dumps(today_payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    (out_dir / "index.html").write_text(build_index_html(today_payload), encoding="utf-8")
+    (out_dir / "index.html").write_text(
+        build_index_html(today_payload, has_shortcut=has_shortcut),
+        encoding="utf-8",
+    )
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
 
     return today_payload

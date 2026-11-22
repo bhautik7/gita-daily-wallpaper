@@ -27,29 +27,25 @@ Minimalist dark daily wallpapers for **iPhone** (`1290×2796`) and **MacBook** (
    - Trigger **Actions → Daily Gita Wallpaper → Run workflow** once (or wait a minute after pushing `main`)
 
 Your daily wallpapers will be live at:
-- Preview site: `https://<username>.github.io/gita-daily-wallpaper/`
-- iPhone image: `https://<username>.github.io/gita-daily-wallpaper/iphone.png`
+- Preview site & 1-tap iPhone Shortcut installer: `https://<username>.github.io/gita-daily-wallpaper/`
+- iPhone image (JPEG / PNG): `https://<username>.github.io/gita-daily-wallpaper/iphone.jpg` / `iphone.png`
 - MacBook image: `https://<username>.github.io/gita-daily-wallpaper/mac.png`
 
 ---
 
-## Step 2: iPhone Setup (60-Second Apple Shortcut Automation)
+## Step 2: iPhone Setup (1-Tap Shortcut + Daily Automation)
 
-Set up a daily personal automation on your iPhone so it pulls the fresh wallpaper each morning and keeps it on your screen for 24 hours:
+Install the pre-built **Daily Gita Wallpaper** shortcut (which automatically downloads `iphone.jpg`, saves it to Photos, and sets your Lock Screen without showing any error or prompt):
 
-1. Open the **Shortcuts** app → **Automation** tab → tap **`+`** (Create Personal Automation).
-2. Choose **Time of Day** → set e.g. **6:00 AM**, **Daily**, and select **Run Immediately** (turn off *Notify When Run* if you want silent swaps).
-3. Tap **New Blank Automation** and add these actions in order:
-   1. **Date** *(Current Date)*
-   2. **Format Date** → Date Format: **Custom**, Format String: `yyyy-MM-dd` *(cache-buster so iOS fetches today's fresh image)*
-   3. **URL** → `https://<username>.github.io/gita-daily-wallpaper/iphone.png?d=` followed by the **Formatted Date** variable
-   4. **Get Contents of URL** *(downloads today's PNG)*
-   5. **Set Wallpaper Photo**:
-      - Target **Lock Screen** (and/or **Home Screen**)
-      - Expand the small arrow (`>`) on **Set Wallpaper Photo** and turn **OFF**:
-        - **Show Preview** *(critical for unattended background updates)*
-        - **Crop to Subject** *(preserves exact centering below the clock)*
-4. Tap **Done** and press the **Play** button once to test it immediately.
+1. Open **`https://<username>.github.io/gita-daily-wallpaper/`** in **Safari on your iPhone**.
+2. Tap **Install iPhone Shortcut** → **Add Shortcut**.
+3. Open **Shortcuts**, tap **Daily Gita Wallpaper** once to test (allow Photos/website permission if asked; if prompted for a wallpaper, choose a **Photo** Lock Screen).
+4. Schedule it to run automatically every day:
+   - Open **Shortcuts** → **Automation** tab → tap **`+`**
+   - Choose **Time of Day** (e.g., **6:00 AM**, **Daily**) → select **Run Immediately** (turn *Notify When Run* OFF) → tap **Next**
+   - Pick **Daily Gita Wallpaper** from your shortcuts list
+
+*(Optional: to keep downloaded wallpapers out of your main Recents feed, create a Photos album such as `Gita`, open the **Daily Gita Wallpaper** shortcut, and change `Recents` in **Save to Photo Album** to your album.)*
 
 ---
 
