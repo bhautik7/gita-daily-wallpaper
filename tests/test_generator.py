@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.build_ios_shortcut import (  # noqa: E402
-    DEFAULT_DAILY_BASE_URL,
+    DEFAULT_SHORTCUT_URL,
     build_shortcut_dict,
     write_shortcut,
 )
@@ -188,7 +188,6 @@ def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
     workflow = build_shortcut_dict()
     actions = workflow["WFWorkflowActions"]
     assert [a["WFWorkflowActionIdentifier"] for a in actions] == [
-        "is.workflow.actions.format.date",
         "is.workflow.actions.url",
         "is.workflow.actions.downloadurl",
         "is.workflow.actions.image.convert",
@@ -196,22 +195,13 @@ def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
         "is.workflow.actions.wallpaper.set",
     ]
 
-    fmt_params = actions[0]["WFWorkflowActionParameters"]
-    url_params = actions[1]["WFWorkflowActionParameters"]
-    dl_params = actions[2]["WFWorkflowActionParameters"]
-    conv_params = actions[3]["WFWorkflowActionParameters"]
-    save_params = actions[4]["WFWorkflowActionParameters"]
-    wall_params = actions[5]["WFWorkflowActionParameters"]
+    url_params = actions[0]["WFWorkflowActionParameters"]
+    dl_params = actions[1]["WFWorkflowActionParameters"]
+    conv_params = actions[2]["WFWorkflowActionParameters"]
+    save_params = actions[3]["WFWorkflowActionParameters"]
+    wall_params = actions[4]["WFWorkflowActionParameters"]
 
-    assert fmt_params["WFDate"]["Value"]["Type"] == "CurrentDate"
-    assert fmt_params["WFDateFormatStyle"] == "Custom"
-    assert fmt_params["WFDateFormat"] == "yyyy-MM-dd"
-
-    url_val = url_params["WFURLActionURL"]["Value"]
-    assert url_val["string"] == f"{DEFAULT_DAILY_BASE_URL}\ufffc.jpg"
-    expected_range = f"{{{len(DEFAULT_DAILY_BASE_URL)}, 1}}"
-    assert url_val["attachmentsByRange"][expected_range]["OutputUUID"] == fmt_params["UUID"]
-
+    assert url_params["WFURLActionURL"] == DEFAULT_SHORTCUT_URL
     assert dl_params["WFURL"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == url_params["UUID"]
     assert conv_params["WFInput"]["Value"]["OutputUUID"] == dl_params["UUID"]
     assert conv_params["WFImageFormat"] == "JPEG"
@@ -224,4 +214,4 @@ def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
 
     out_file = write_shortcut(tmp_path / "test.shortcut")
     loaded = plistlib.loads(out_file.read_bytes())
-    assert len(loaded["WFWorkflowActions"]) == 6
+    assert len(loaded["WFWorkflowActions"]) == 5

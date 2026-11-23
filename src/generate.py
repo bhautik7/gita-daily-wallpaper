@@ -458,6 +458,52 @@ def build_index_html(today_payload: dict, has_shortcut: bool = False) -> str:
       border-radius: 10px;
       border: 1px solid rgba(255, 255, 255, 0.06);
     }}
+    .setup {{
+      margin-top: 2.25rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    .setup h2 {{
+      margin: 0 0 1rem;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--text);
+    }}
+    .setup-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }}
+    .setup h3 {{
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+    }}
+    .setup ol {{
+      margin: 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }}
+    .setup li + li {{
+      margin-top: 0.3rem;
+    }}
+    .setup strong {{
+      color: var(--text);
+      font-weight: 500;
+    }}
+    .setup code {{
+      color: var(--accent);
+      font-size: 0.82rem;
+      word-break: break-all;
+    }}
     footer {{
       margin-top: 2.5rem;
       text-align: center;
@@ -489,6 +535,26 @@ def build_index_html(today_payload: dict, has_shortcut: bool = False) -> str:
           <a href="mac.png">mac.png</a>
         </div>
         <a href="mac.png"><img class="preview" src="mac.png" alt="MacBook daily wallpaper preview" /></a>
+      </div>
+    </section>
+    <section class="setup">
+      <h2>Auto-Update Setup (30 Seconds)</h2>
+      <div class="setup-grid">
+        <div>
+          <h3>iPhone</h3>
+          <ol>
+            <li>Tap <strong>Install iPhone Shortcut</strong> above &rarr; <strong>Add Shortcut</strong>.</li>
+            <li>Run it once in <strong>Shortcuts</strong> and allow Photos &amp; site access (use a Photo Lock Screen).</li>
+            <li>Open <strong>Shortcuts &rarr; Automation &rarr; + &rarr; Time of Day</strong> (e.g., 6:00 AM, Daily, <strong>Run Immediately</strong>) &rarr; pick <strong>DailyGitaWallpaper</strong>.</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Android</h3>
+          <ol>
+            <li>Install <strong>MacroDroid</strong> (free) and add a daily <strong>Day/Time</strong> trigger (e.g., 6:00 AM).</li>
+            <li>Add <strong>HTTP GET</strong> to <code>iphone.jpg</code> (save file) &rarr; <strong>Set Wallpaper</strong> (Lock &amp; Home screen).</li>
+          </ol>
+        </div>
       </div>
     </section>
     <footer>

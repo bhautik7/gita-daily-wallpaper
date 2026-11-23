@@ -2,9 +2,11 @@ name: Daily Gita Wallpaper
 
 on:
   schedule:
-    # Off-peak twice-daily triggers to keep the 35-day buffer & top-level page fresh
-    - cron: '37 4 * * *'
-    - cron: '23 9 * * *'
+    # Staggered off-peak daily triggers so iphone.jpg updates reliably every night
+    - cron: '17 5 * * *'
+    - cron: '43 6 * * *'
+    - cron: '29 8 * * *'
+    - cron: '11 10 * * *'
   push:
     branches:
       - main
