@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.build_ios_shortcut import (  # noqa: E402
-    DEFAULT_SHORTCUT_URL,
+    DEFAULT_DAILY_BASE_URL,
     build_shortcut_dict,
     write_shortcut,
 )
@@ -91,6 +91,7 @@ def test_end_to_end_generation(tmp_path: Path) -> None:
         config_path=PROJECT_ROOT / "config.json",
         lessons_path=PROJECT_ROOT / "data" / "lessons.json",
         date_str="2026-11-21",
+        buffer_days=3,
     )
 
     assert payload["date"] == "2026-11-21"
@@ -134,6 +135,19 @@ def test_end_to_end_generation(tmp_path: Path) -> None:
         extrema = crop.getextrema()
         assert all(hi - lo > 120 for lo, hi in extrema), "Expected text contrast in Mac center band"
 
+    for daily_iso in ("2026-11-20", "2026-11-21", "2026-11-22", "2026-11-23"):
+        daily_jpg = tmp_path / "daily" / f"{daily_iso}.jpg"
+        assert daily_jpg.is_file()
+        with Image.open(daily_jpg) as img:
+            assert img.format == "JPEG"
+            assert img.size == (1290, 2796)
+
+    daily_mac = tmp_path / "daily" / "mac-2026-11-21.png"
+    assert daily_mac.is_file()
+    with Image.open(daily_mac) as img:
+        assert img.format == "PNG"
+        assert img.size == (3456, 2234)
+
     today_json = json.loads(today_path.read_text(encoding="utf-8"))
     assert today_json == payload
 
@@ -148,10 +162,33 @@ def test_end_to_end_generation(tmp_path: Path) -> None:
         assert "DailyGitaWallpaper.shortcut" in html_text
 
 
+def test_only_mac_generation(tmp_path: Path) -> None:
+    payload = generate_site(
+        out_dir=tmp_path,
+        config_path=PROJECT_ROOT / "config.json",
+        lessons_path=PROJECT_ROOT / "data" / "lessons.json",
+        date_str="2026-11-23",
+        only_mac=True,
+    )
+
+    assert payload["date"] == "2026-11-23"
+    assert payload["day_index"] == 2
+    assert (tmp_path / "mac.png").is_file()
+    assert not (tmp_path / "iphone.png").exists()
+    assert not (tmp_path / "iphone.jpg").exists()
+    assert not (tmp_path / "daily").exists()
+    assert not (tmp_path / "index.html").exists()
+
+    with Image.open(tmp_path / "mac.png") as mac_img:
+        assert mac_img.size == (3456, 2234)
+        assert mac_img.mode == "RGB"
+
+
 def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
     workflow = build_shortcut_dict()
     actions = workflow["WFWorkflowActions"]
     assert [a["WFWorkflowActionIdentifier"] for a in actions] == [
+        "is.workflow.actions.format.date",
         "is.workflow.actions.url",
         "is.workflow.actions.downloadurl",
         "is.workflow.actions.image.convert",
@@ -159,13 +196,22 @@ def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
         "is.workflow.actions.wallpaper.set",
     ]
 
-    url_params = actions[0]["WFWorkflowActionParameters"]
-    dl_params = actions[1]["WFWorkflowActionParameters"]
-    conv_params = actions[2]["WFWorkflowActionParameters"]
-    save_params = actions[3]["WFWorkflowActionParameters"]
-    wall_params = actions[4]["WFWorkflowActionParameters"]
+    fmt_params = actions[0]["WFWorkflowActionParameters"]
+    url_params = actions[1]["WFWorkflowActionParameters"]
+    dl_params = actions[2]["WFWorkflowActionParameters"]
+    conv_params = actions[3]["WFWorkflowActionParameters"]
+    save_params = actions[4]["WFWorkflowActionParameters"]
+    wall_params = actions[5]["WFWorkflowActionParameters"]
 
-    assert url_params["WFURLActionURL"] == DEFAULT_SHORTCUT_URL
+    assert fmt_params["WFDate"]["Value"]["Type"] == "CurrentDate"
+    assert fmt_params["WFDateFormatStyle"] == "Custom"
+    assert fmt_params["WFDateFormat"] == "yyyy-MM-dd"
+
+    url_val = url_params["WFURLActionURL"]["Value"]
+    assert url_val["string"] == f"{DEFAULT_DAILY_BASE_URL}\ufffc.jpg"
+    expected_range = f"{{{len(DEFAULT_DAILY_BASE_URL)}, 1}}"
+    assert url_val["attachmentsByRange"][expected_range]["OutputUUID"] == fmt_params["UUID"]
+
     assert dl_params["WFURL"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputUUID"] == url_params["UUID"]
     assert conv_params["WFInput"]["Value"]["OutputUUID"] == dl_params["UUID"]
     assert conv_params["WFImageFormat"] == "JPEG"
@@ -178,4 +224,4 @@ def test_build_ios_shortcut_action_chain(tmp_path: Path) -> None:
 
     out_file = write_shortcut(tmp_path / "test.shortcut")
     loaded = plistlib.loads(out_file.read_bytes())
-    assert len(loaded["WFWorkflowActions"]) == 5
+    assert len(loaded["WFWorkflowActions"]) == 6

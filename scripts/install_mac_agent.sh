@@ -14,6 +14,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPDATER_SCRIPT="${SCRIPT_DIR}/update_mac_wallpaper.sh"
+SWIFT_SRC="${SCRIPT_DIR}/set_mac_wallpaper.swift"
 
 if [[ ! -x "$UPDATER_SCRIPT" ]]; then
   chmod +x "$UPDATER_SCRIPT"
@@ -22,6 +23,7 @@ fi
 CONFIG_DIR="${HOME}/.config/gita-wallpaper"
 CONFIG_FILE="${CONFIG_DIR}/config"
 STATE_DIR="${HOME}/.local/share/gita-wallpaper"
+SET_BIN="${STATE_DIR}/set-wallpaper"
 LOG_FILE="${STATE_DIR}/agent.log"
 LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
 PLIST_LABEL="com.gita.daily-wallpaper"
@@ -31,6 +33,11 @@ mkdir -p "$CONFIG_DIR" "$STATE_DIR" "$LAUNCH_AGENTS_DIR"
 
 printf 'GITA_PAGES_URL=%q\n' "$PAGES_URL" > "$CONFIG_FILE"
 
+if [[ -f "$SWIFT_SRC" ]] && command -v swiftc >/dev/null 2>&1; then
+  echo "Compiling native AppKit wallpaper setter..."
+  swiftc -O "$SWIFT_SRC" -o "$SET_BIN"
+fi
+
 cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -38,6 +45,8 @@ cat > "$PLIST_PATH" <<EOF
 <dict>
   <key>Label</key>
   <string>${PLIST_LABEL}</string>
+  <key>LimitLoadToSessionType</key>
+  <string>Aqua</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
@@ -46,7 +55,7 @@ cat > "$PLIST_PATH" <<EOF
   <key>RunAtLoad</key>
   <true/>
   <key>StartInterval</key>
-  <integer>3600</integer>
+  <integer>1800</integer>
   <key>StandardOutPath</key>
   <string>${LOG_FILE}</string>
   <key>StandardErrorPath</key>

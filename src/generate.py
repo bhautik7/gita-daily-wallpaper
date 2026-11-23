@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, timedelta
 import html
 import json
 from pathlib import Path
@@ -25,6 +25,8 @@ SYSTEM_FONT_CANDIDATES: tuple[tuple[Path, int], ...] = (
     (Path("/System/Library/Fonts/NewYork.ttf"), 0),
     (Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"), 0),
 )
+
+_BACKGROUND_CACHE: dict[tuple[int, int, float, str, str], Image.Image] = {}
 
 
 def hex_to_rgb(color: str) -> tuple[int, int, int]:
@@ -249,7 +251,12 @@ def render_wallpaper(
     center_y_ratio = float(device_cfg["center_y_ratio"])
     rule_width = int(device_cfg["rule_width"])
 
-    canvas = render_background(width, height, theme, center_y_ratio=center_y_ratio)
+    cache_key = (width, height, center_y_ratio, theme["bg_outer"], theme["bg_center"])
+    cached_bg = _BACKGROUND_CACHE.get(cache_key)
+    if cached_bg is None:
+        cached_bg = render_background(width, height, theme, center_y_ratio=center_y_ratio)
+        _BACKGROUND_CACHE[cache_key] = cached_bg
+    canvas = cached_bg.copy()
     draw = ImageDraw.Draw(canvas)
 
     font, font_size, lines = _fit_typography(lesson_text, device_cfg, draw)
@@ -500,6 +507,8 @@ def generate_site(
     date_str: str | None = None,
     tz_override: str | None = None,
     show_citation_override: bool | None = None,
+    only_mac: bool = False,
+    buffer_days: int = 35,
 ) -> dict:
     """Generate wallpapers, today.json, index.html, and .nojekyll into out_dir."""
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -514,18 +523,38 @@ def generate_site(
         if show_citation_override is None
         else show_citation_override
     )
-    citation = f"Bhagavad Gita {entry['chapter']}.{entry['verse']}" if show_citation else None
+
+    def _citation_for(item: dict) -> str | None:
+        return f"Bhagavad Gita {item['chapter']}.{item['verse']}" if show_citation else None
 
     out_dir.mkdir(parents=True, exist_ok=True)
     theme = config["theme"]
 
+    if only_mac:
+        mac_img = render_wallpaper(
+            lesson_text=entry["lesson"],
+            device_cfg=config["devices"]["mac"],
+            theme=theme,
+            citation=_citation_for(entry),
+        )
+        mac_img.save(out_dir / "mac.png", format="PNG", optimize=True)
+        return {
+            "date": target_date.isoformat(),
+            "day_index": day_index,
+            "total_lessons": len(lessons),
+            "lesson": entry["lesson"],
+            "mac_image": "mac.png",
+        }
+
+    rendered_today: dict[str, Image.Image] = {}
     for device_name, filename in (("iphone", "iphone.png"), ("mac", "mac.png")):
         img = render_wallpaper(
             lesson_text=entry["lesson"],
             device_cfg=config["devices"][device_name],
             theme=theme,
-            citation=citation,
+            citation=_citation_for(entry),
         )
+        rendered_today[device_name] = img
         img.save(out_dir / filename, format="PNG", optimize=True)
         if device_name == "iphone":
             img.save(
@@ -535,6 +564,49 @@ def generate_site(
                 subsampling=0,
                 optimize=True,
             )
+
+    if buffer_days > 0:
+        daily_dir = out_dir / "daily"
+        daily_dir.mkdir(parents=True, exist_ok=True)
+        mac_buffer_end = min(14, buffer_days)
+        for offset in range(-1, buffer_days):
+            buf_date = target_date + timedelta(days=offset)
+            buf_iso = buf_date.isoformat()
+            _, buf_entry = select_lesson(lessons, buf_date, config["start_date"])
+            buf_citation = _citation_for(buf_entry)
+
+            if offset == 0:
+                iphone_buf_img = rendered_today["iphone"]
+            else:
+                iphone_buf_img = render_wallpaper(
+                    lesson_text=buf_entry["lesson"],
+                    device_cfg=config["devices"]["iphone"],
+                    theme=theme,
+                    citation=buf_citation,
+                )
+            iphone_buf_img.save(
+                daily_dir / f"{buf_iso}.jpg",
+                format="JPEG",
+                quality=90,
+                subsampling=0,
+                optimize=True,
+            )
+
+            if offset < mac_buffer_end:
+                if offset == 0:
+                    shutil.copy2(out_dir / "mac.png", daily_dir / f"mac-{buf_iso}.png")
+                else:
+                    mac_buf_img = render_wallpaper(
+                        lesson_text=buf_entry["lesson"],
+                        device_cfg=config["devices"]["mac"],
+                        theme=theme,
+                        citation=buf_citation,
+                    )
+                    mac_buf_img.save(
+                        daily_dir / f"mac-{buf_iso}.png",
+                        format="PNG",
+                        optimize=True,
+                    )
 
     shortcut_src = PROJECT_ROOT / "assets" / "DailyGitaWallpaper.shortcut"
     has_shortcut = shortcut_src.is_file()
@@ -602,6 +674,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Render Chapter.Verse citation beneath the learning sentence",
     )
+    parser.add_argument(
+        "--only-mac",
+        action="store_true",
+        help="Render only mac.png for fast local desktop updates",
+    )
+    parser.add_argument(
+        "--buffer-days",
+        type=int,
+        default=35,
+        help="Pre-generate N future days into out/daily/ (default: 35, 0 disables)",
+    )
     return parser.parse_args(argv)
 
 
@@ -615,6 +698,8 @@ def main(argv: list[str] | None = None) -> int:
         date_str=args.date,
         tz_override=args.tz,
         show_citation_override=args.show_citation,
+        only_mac=args.only_mac,
+        buffer_days=args.buffer_days,
     )
     print(f"Generated wallpapers for {payload['date']} (day {payload['day_index'] + 1}/{payload['total_lessons']})")
     return 0

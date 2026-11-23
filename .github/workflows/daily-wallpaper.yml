@@ -2,8 +2,9 @@ name: Daily Gita Wallpaper
 
 on:
   schedule:
-    # 05:15 UTC = 00:15 EST / 01:15 EDT (America/Toronto)
-    - cron: '15 5 * * *'
+    # Off-peak twice-daily triggers to keep the 35-day buffer & top-level page fresh
+    - cron: '37 4 * * *'
+    - cron: '23 9 * * *'
   push:
     branches:
       - main
